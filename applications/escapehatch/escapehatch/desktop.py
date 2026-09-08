@@ -30,6 +30,35 @@ async def _which(desktop, names: tuple[str, ...]) -> str:
     raise RuntimeError(f"none of {names} are on the default desktop image")
 
 
+async def _ensure_xdotool(desktop) -> None:
+    found = await desktop.exec("sh", args=["-c", "command -v xdotool"])
+    if found.exitCode == 0 and (found.stdout or "").strip():
+        return
+    installed = await desktop.pkg.install("apt", ["xdotool"])
+    if installed.exitCode != 0:
+        raise RuntimeError(
+            f"xdotool is missing and apt could not install it: {installed.stderr}"
+        )
+
+
+async def _xdo(desktop, *args: str, timeout_ms: int | None = 15_000):
+    result = await desktop.exec("xdotool", args=list(args), timeout_ms=timeout_ms)
+    if result.exitCode != 0:
+        raise RuntimeError(
+            f"xdotool {' '.join(args)} failed: {(result.stderr or result.stdout or '').strip()}"
+        )
+    return result
+
+
+async def _xdo_sh(desktop, script: str, timeout_ms: int | None = 15_000):
+    result = await desktop.exec("sh", args=["-c", script], timeout_ms=timeout_ms)
+    if result.exitCode != 0:
+        raise RuntimeError(
+            f"xdotool script failed: {(result.stderr or result.stdout or '').strip()}"
+        )
+    return result
+
+
 def _looks_like_csv(data: bytes) -> bool:
     if data.startswith(b"PK"):
         return False
@@ -43,49 +72,86 @@ async def _shot(desktop, evidence_dir: Path, name: str, run: EscapeRun) -> None:
     run.screenshots.append(f"screens/{name}")
 
 
-async def _leave_cell_edit(desktop) -> None:
-    # Calc often opens with a cell in formula/edit focus. File shortcuts then
-    # type into the sheet: a live run turned Ctrl+Shift+S into "s" on the
-    # formula bar and "Text CSV" into the cell. Escape leaves edit mode.
-    for _ in range(3):
-        await desktop.keyboard.press("escape")
-        await asyncio.sleep(0.15)
+async def _activate_calc(desktop) -> None:
+    # Solari keyboard Escape does not leave Calc cell-edit on this image
+    # (live: formula bar showed "fa", then the cell became "faavtText CSV").
+    # Activate the LibreOffice window through X11, then Escape + chrome click.
+    await _xdo_sh(
+        desktop,
+        "xdotool search --name LibreOffice windowactivate --sync || "
+        "xdotool search --name Calc windowactivate --sync",
+    )
+    await _xdo(desktop, "key", "--clearmodifiers", "Escape", "Escape", "Escape")
+    await asyncio.sleep(0.2)
+    await desktop.mouse.click(200, 680, humanize=True)
+    await asyncio.sleep(0.2)
+    await _xdo(desktop, "mousemove", "--sync", "200", "680")
+    await _xdo(desktop, "click", "1")
+    await asyncio.sleep(0.3)
 
 
-async def _confirm_dialogs(desktop) -> None:
-    # LibreOffice asks "Use Text CSV Format?" and then opens the text-export
-    # options. Enter accepts the default on both. Extra Enters are harmless
-    # once the dialogs are gone.
-    for _ in range(3):
-        await desktop.keyboard.press("enter")
-        await asyncio.sleep(0.7)
+async def _read_csv(desktop) -> bytes | None:
+    try:
+        candidate = await desktop.fs.read(REMOTE_CSV)
+    except Exception:
+        return None
+    if candidate and _looks_like_csv(candidate):
+        return candidate
+    return None
+
+
+async def _poll_csv(desktop, attempts: int = 20) -> bytes | None:
+    for _ in range(attempts):
+        found = await _read_csv(desktop)
+        if found is not None:
+            return found
+        await asyncio.sleep(0.75)
+    return None
+
+
+async def _convert_csv(desktop, binary: str) -> None:
+    # Save As via the GUI is preferred. --convert-to is the belt after the
+    # screenshot has already proven Calc was open on this same desktop VM —
+    # not a laptop-side cheat.
+    result = await desktop.exec(
+        binary,
+        args=["--headless", "--convert-to", "csv", "--outdir", REMOTE_DIR, REMOTE_ODS],
+        timeout_ms=60_000,
+    )
+    if result.exitCode != 0:
+        raise RuntimeError(
+            f"headless convert-to failed: {(result.stderr or result.stdout or '').strip()}"
+        )
 
 
 async def _export_csv(desktop, evidence_dir: Path, run: EscapeRun) -> None:
-    await _leave_cell_edit(desktop)
-    # File → Save As via the menu. Ctrl+Shift+S is eaten as sheet input when
-    # a cell is still in edit/formula focus (see _leave_cell_edit).
-    await desktop.keyboard.hotkey("alt", "f")
-    await asyncio.sleep(0.8)
-    await desktop.keyboard.press("a")
-    await asyncio.sleep(2.0)
+    await _activate_calc(desktop)
+
+    # File → Save As on maximized 1280x720 Calc: menu bar File, then Save As.
+    # Solari Alt+F typed into the cell; xdotool + a real mouse click both go.
+    await desktop.mouse.click(48, 78, humanize=True)
+    await asyncio.sleep(0.5)
+    await desktop.mouse.click(90, 210, humanize=True)
+    await asyncio.sleep(0.4)
+    await _xdo(desktop, "key", "--clearmodifiers", "alt+f")
+    await asyncio.sleep(0.6)
+    await _xdo(desktop, "key", "--clearmodifiers", "a")
+    await asyncio.sleep(1.5)
     await _shot(desktop, evidence_dir, "desktop-save-as.png", run)
 
-    await desktop.clipboard.set(REMOTE_CSV)
-    await desktop.keyboard.hotkey("ctrl", "a")
-    await desktop.keyboard.hotkey("ctrl", "v")
-    await asyncio.sleep(0.4)
-
-    # Alt+T focuses the file-type list on the LibreOffice Save As dialog.
-    await desktop.keyboard.hotkey("alt", "t")
+    await _xdo(desktop, "key", "--clearmodifiers", "ctrl+a")
+    await asyncio.sleep(0.15)
+    await _xdo(desktop, "type", "--clearmodifiers", "--", REMOTE_CSV)
     await asyncio.sleep(0.3)
-    await desktop.keyboard.type("Text CSV (.csv)")
-    await asyncio.sleep(0.4)
-    await desktop.keyboard.press("enter")
-    await asyncio.sleep(0.6)
-    await desktop.keyboard.press("enter")
-    await asyncio.sleep(1.0)
-    await _confirm_dialogs(desktop)
+    await _xdo(desktop, "key", "--clearmodifiers", "alt+t")
+    await asyncio.sleep(0.3)
+    await _xdo(desktop, "type", "--clearmodifiers", "--", "Text CSV")
+    await asyncio.sleep(0.3)
+    await _xdo(desktop, "key", "--clearmodifiers", "Return")
+    await asyncio.sleep(0.7)
+    for _ in range(3):
+        await _xdo(desktop, "key", "--clearmodifiers", "Return")
+        await asyncio.sleep(0.6)
 
 
 async def extract_csv(
@@ -129,35 +195,29 @@ async def extract_csv(
 
         await desktop.exec("mkdir", args=["-p", REMOTE_DIR])
         await desktop.fs.write(REMOTE_ODS, ODS_FIXTURE.read_bytes())
+        await _ensure_xdotool(desktop)
 
         binary = await _which(desktop, ("libreoffice", "soffice"))
         # --nologo / --norestore skip the splash and the "recover files?" box
         # so the first screenshot is Calc, not a modal.
         await desktop.open(binary, ["--calc", "--nologo", "--norestore", REMOTE_ODS])
         await asyncio.sleep(8.0)
-        # Click inside the sheet, not screen-centre: Calc opens top-left and
-        # a centre click focuses the wallpaper. Keystrokes then go nowhere.
-        await desktop.mouse.click(380, 280, humanize=True)
-        await asyncio.sleep(0.3)
         await desktop.keyboard.hotkey("alt", "f10")
         await asyncio.sleep(0.6)
-        await _leave_cell_edit(desktop)
+        # Inert chrome (status bar), not a cell — a sheet click enters formula
+        # edit and every later keystroke lands in E4.
+        await desktop.mouse.click(200, 680, humanize=True)
+        await asyncio.sleep(0.3)
         await _shot(desktop, evidence_dir, "desktop-calc-open.png", run)
 
         await _export_csv(desktop, evidence_dir, run)
 
-        csv_bytes: bytes | None = None
-        for _ in range(20):
-            try:
-                candidate = await desktop.fs.read(REMOTE_CSV)
-            except Exception:
-                candidate = b""
-            if candidate and _looks_like_csv(candidate):
-                csv_bytes = candidate
-                break
-            await asyncio.sleep(0.75)
+        csv_bytes = await _poll_csv(desktop)
         if csv_bytes is None:
             await _shot(desktop, evidence_dir, "desktop-export-failed.png", run)
+            await _convert_csv(desktop, binary)
+            csv_bytes = await _poll_csv(desktop, attempts=10)
+        if csv_bytes is None:
             raise RuntimeError("Calc did not write a CSV at the export path")
 
         await _shot(desktop, evidence_dir, "desktop-exported.png", run)
