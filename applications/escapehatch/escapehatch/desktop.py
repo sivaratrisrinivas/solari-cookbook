@@ -43,6 +43,15 @@ async def _shot(desktop, evidence_dir: Path, name: str, run: EscapeRun) -> None:
     run.screenshots.append(f"screens/{name}")
 
 
+async def _leave_cell_edit(desktop) -> None:
+    # Calc often opens with a cell in formula/edit focus. File shortcuts then
+    # type into the sheet: a live run turned Ctrl+Shift+S into "s" on the
+    # formula bar and "Text CSV" into the cell. Escape leaves edit mode.
+    for _ in range(3):
+        await desktop.keyboard.press("escape")
+        await asyncio.sleep(0.15)
+
+
 async def _confirm_dialogs(desktop) -> None:
     # LibreOffice asks "Use Text CSV Format?" and then opens the text-export
     # options. Enter accepts the default on both. Extra Enters are harmless
@@ -53,8 +62,12 @@ async def _confirm_dialogs(desktop) -> None:
 
 
 async def _export_csv(desktop, evidence_dir: Path, run: EscapeRun) -> None:
-    # File → Save As. Ctrl+Shift+S is the Calc shortcut on the English UI.
-    await desktop.keyboard.hotkey("ctrl", "shift", "s")
+    await _leave_cell_edit(desktop)
+    # File → Save As via the menu. Ctrl+Shift+S is eaten as sheet input when
+    # a cell is still in edit/formula focus (see _leave_cell_edit).
+    await desktop.keyboard.hotkey("alt", "f")
+    await asyncio.sleep(0.8)
+    await desktop.keyboard.press("a")
     await asyncio.sleep(2.0)
     await _shot(desktop, evidence_dir, "desktop-save-as.png", run)
 
@@ -66,7 +79,7 @@ async def _export_csv(desktop, evidence_dir: Path, run: EscapeRun) -> None:
     # Alt+T focuses the file-type list on the LibreOffice Save As dialog.
     await desktop.keyboard.hotkey("alt", "t")
     await asyncio.sleep(0.3)
-    await desktop.keyboard.type("Text CSV")
+    await desktop.keyboard.type("Text CSV (.csv)")
     await asyncio.sleep(0.4)
     await desktop.keyboard.press("enter")
     await asyncio.sleep(0.6)
@@ -128,6 +141,7 @@ async def extract_csv(
         await asyncio.sleep(0.3)
         await desktop.keyboard.hotkey("alt", "f10")
         await asyncio.sleep(0.6)
+        await _leave_cell_edit(desktop)
         await _shot(desktop, evidence_dir, "desktop-calc-open.png", run)
 
         await _export_csv(desktop, evidence_dir, run)
