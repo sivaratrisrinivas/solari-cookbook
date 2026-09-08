@@ -67,8 +67,9 @@ async def file_batch(
     await _wait_for_portal(form_url)
 
     solari = Solari(api_key=api_key)
-    browser = await solari.launch(recording=True)
+    browser = None
     try:
+        browser = await solari.launch(recording=True)
         page = await browser.new_page()
         await page.goto(form_url, wait_until="domcontentloaded")
         await page.locator("h1").wait_for()
@@ -89,7 +90,8 @@ async def file_batch(
             screens=["screens/browser-portal.png", "screens/browser-receipt.png"],
         )
     finally:
-        await browser.close()
+        if browser is not None:
+            await browser.close()
         closer = getattr(solari, "close", None)
         if closer is not None:
             await closer()
