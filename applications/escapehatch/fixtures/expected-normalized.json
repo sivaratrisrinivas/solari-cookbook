@@ -1,0 +1,62 @@
+{
+  "accepted": [
+    {
+      "closed_at": "2026-09-07",
+      "line": 3,
+      "lot": "LOT-9F2A",
+      "operator": "m.chen",
+      "qty": 12.5,
+      "sku": "SKU-BRZ12",
+      "status": "closed",
+      "ticket_id": "TKT-104221",
+      "unit": "kg"
+    },
+    {
+      "closed_at": "2026-09-07",
+      "line": 7,
+      "lot": "LOT-1C88",
+      "operator": "j.okonkwo",
+      "qty": 40,
+      "sku": "SKU-ALM04",
+      "status": "closed",
+      "ticket_id": "TKT-104222",
+      "unit": "ea"
+    },
+    {
+      "closed_at": "2026-09-07",
+      "line": 4,
+      "lot": "LOT-77D0",
+      "operator": "a.singh",
+      "qty": 2,
+      "sku": "SKU-NIT02",
+      "status": "hold",
+      "ticket_id": "TKT-104225",
+      "unit": "L"
+    }
+  ],
+  "counts": {
+    "accepted": 3,
+    "input_rows": 6,
+    "rejected": 3
+  },
+  "digest": "0b92f6f0ed70e3a40b4ea63e6e0dd9d3667320d376740a533146b067136c76a6",
+  "rejected": [
+    {
+      "reason": "qty must be greater than 0",
+      "row": 4,
+      "ticket_id": "TKT-104223"
+    },
+    {
+      "reason": "status must be one of closed, hold, scrap",
+      "row": 5,
+      "ticket_id": "TKT-104224"
+    },
+    {
+      "reason": "line must be an integer between 1 and 24",
+      "row": 7,
+      "ticket_id": "TKT-104226"
+    }
+  ],
+  "schema": "escapehatch.tickets.v1",
+  "source": "night-shift-tickets.ods"
+}

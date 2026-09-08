@@ -55,6 +55,11 @@ One key spans all three, so an example can use more than one at once.
 Bigger programs built on Solari — a CLI or a UI, its own modules, solving a whole
 problem rather than showing one call. See [applications/](applications).
 
+| Application | Language | What it does |
+| --- | --- | --- |
+| [worldline](applications/worldline) | Python | Snapshot-branch competing plans, verify their artifacts, and replay only the winner |
+| [escapehatch](applications/escapehatch) | Python | Drive LibreOffice Calc, normalize the extract, and file a portal receipt |
+
 ## Running an example
 
 Each directory is self-contained.

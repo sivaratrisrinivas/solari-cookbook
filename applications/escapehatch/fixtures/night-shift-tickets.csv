@@ -1,0 +1,7 @@
+ticket_id,line,sku,lot,qty,unit,status,operator,closed_at
+TKT-104221,3,SKU-BRZ12,LOT-9F2A,12.50,kg,closed,m.chen,2026-09-07
+TKT-104222,7,SKU-ALM04,LOT-1C88,40,ea,closed,j.okonkwo,2026-09-07
+TKT-104223,1,SKU-PVC08,LOT-44B1,-3,kg,closed,r.patel,2026-09-07
+TKT-104224,12,SKU-BRZ12,LOT-9F2A,8,kg,maybe,m.chen,2026-09-07
+TKT-104225,4,SKU-NIT02,LOT-77D0,2.00,L,hold,a.singh,2026-09-07
+TKT-104226,not-a-line,SKU-ALM04,LOT-1C88,1,ea,closed,j.okonkwo,2026-09-07

@@ -1,0 +1,5 @@
+evidence/
+.pytest_cache/
+build/
+*.egg-info/
+.env

@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "escapehatch-solari"
+version = "0.1.0"
+description = "Extract a locked desktop workbook, normalize it, and file a portal receipt on Solari"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+  "solari-desktop>=0.2.0",
+  "solari-sandbox>=0.2.0",
+  "solari-browser>=0.1.2",
+]
+
+[project.scripts]
+escapehatch = "escapehatch.cli:main"
+
+[tool.setuptools]
+packages = ["escapehatch"]
