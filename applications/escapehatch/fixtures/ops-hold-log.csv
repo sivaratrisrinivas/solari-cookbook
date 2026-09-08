@@ -1,0 +1,9 @@
+Pinetree Cold Chain — Nightly Hold Log
+Shift date: 2026-09-08,Shift: Night,Facility: SEA-01
+
+Site ID,Batch,Operator,Produced (local),Qty,UOM,Status,Exception,Notes
+PINE-SEA-01,B-2026-0908-014,M. Chen,2026-09-08 06:12,48,pallet,HOLD,TEMP-EXCURSION,Dock 3 probe 2.1C
+PINE-PDX-04,B-2026-0908-021,A. Rahman,9/8/2026 5:40 AM,12,tote,hold,,Cycle count pending
+PINE-SEA-01,B-2026-0907-198,M. Chen,2026-09-07T22:15:00-07:00,6,pallet,Released,,Cleared after reinspect
+PINE-SFO-02,B-2026-0908-003,J. Ortiz,07 Sep 2026 23:04,1,tote,DISCARD,SEAL-BROKEN,Inbound seal mismatch
+PINE-PDX-04,B-2026-0908-030,,2026-09-08 07:01,24,case,pending,LABEL-MISMATCH,Reprint requested
