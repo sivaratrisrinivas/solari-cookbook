@@ -2,7 +2,12 @@ import json
 import unittest
 from pathlib import Path
 
-from escapehatch.normalizer import NormalizeError, digest_payload, normalize_csv
+from escapehatch.normalizer import (
+    NormalizeError,
+    decode_csv_text,
+    digest_payload,
+    normalize_csv,
+)
 from escapehatch.ods import expected_csv
 from escapehatch.paths import CSV_FIXTURE
 
@@ -85,6 +90,14 @@ class NormalizerTests(unittest.TestCase):
     def test_expected_csv_matches_committed_fixture(self) -> None:
         if CSV_FIXTURE.exists():
             self.assertEqual(CSV_FIXTURE.read_text(encoding="utf-8"), expected_csv())
+
+    def test_cp1252_em_dash_from_libreoffice(self) -> None:
+        raw = expected_csv().replace("—", chr(0x97)).encode("latin-1")
+        self.assertIn(0x97, raw)
+        with self.assertRaises(UnicodeDecodeError):
+            raw.decode("utf-8")
+        payload = normalize_csv(decode_csv_text(raw))
+        self.assertEqual(payload["rowCount"], 5)
 
 
 if __name__ == "__main__":

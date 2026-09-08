@@ -10,7 +10,7 @@ from solari_sandbox import SandboxClient
 
 from .evidence import save_bytes, sha256_bytes
 from .models import EscapeRun
-from .normalizer import normalize_csv
+from .normalizer import decode_csv_text, normalize_csv
 from .paths import (
     BASE_URL,
     PORTAL_PORT,
@@ -88,7 +88,7 @@ async def normalize_and_host(
         remote_json = await sandbox.files.read_text(REMOTE_JSON)
         # Re-parse locally so a poisoned guest cannot hand us a different digest
         # than the CSV we just wrote. The guest did the work; we check the result.
-        expected = normalize_csv(csv_bytes.decode("utf-8-sig"))
+        expected = normalize_csv(decode_csv_text(csv_bytes))
         import json
 
         observed = json.loads(remote_json)
