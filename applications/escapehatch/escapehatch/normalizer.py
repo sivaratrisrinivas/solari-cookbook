@@ -74,6 +74,18 @@ class NormalizeError(ValueError):
     """The extract does not satisfy the hold-log schema."""
 
 
+def decode_csv_text(raw: bytes | str) -> str:
+    """LibreOffice CSV on this desktop image is often cp1252 (em dash 0x97)."""
+    if isinstance(raw, str):
+        return raw
+    for encoding in ("utf-8-sig", "utf-8", "cp1252", "latin-1"):
+        try:
+            return raw.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    return raw.decode("utf-8", errors="replace")
+
+
 def _norm_header(cell: str) -> str:
     return re.sub(r"\s+", " ", cell.strip().lower())
 
@@ -233,7 +245,7 @@ def normalize_csv(text: str) -> dict[str, Any]:
 
 
 def normalize_path(csv_path: Path, json_path: Path) -> dict[str, Any]:
-    text = csv_path.read_text(encoding="utf-8-sig")
+    text = decode_csv_text(csv_path.read_bytes())
     payload = normalize_csv(text)
     json_path.parent.mkdir(parents=True, exist_ok=True)
     json_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")

@@ -9,6 +9,7 @@ from solari_desktop import DesktopClient
 
 from .evidence import save_bytes, screens_dir, sha256_bytes
 from .models import EscapeRun
+from .normalizer import decode_csv_text
 from .paths import BASE_URL, ODS_FIXTURE, REMOTE_CSV, REMOTE_DIR, REMOTE_ODS
 
 
@@ -62,7 +63,7 @@ async def _xdo_sh(desktop, script: str, timeout_ms: int | None = 15_000):
 def _looks_like_csv(data: bytes) -> bool:
     if data.startswith(b"PK"):
         return False
-    text = data.decode("utf-8-sig", errors="replace")
+    text = decode_csv_text(data)
     return "Batch" in text and "PINE-" in text
 
 
